@@ -232,7 +232,10 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     window->floating         = wndconfig.floating;
     window->focusOnShow      = wndconfig.focusOnShow;
     window->mousePassthrough = wndconfig.mousePassthrough;
+    window->customTitlebar   = wndconfig.customTitlebar;
     window->cursorMode       = GLFW_CURSOR_NORMAL;
+
+    window->customTitlebar_props = wndconfig.customTitlebar_props;
 
     window->doublebuffer = fbconfig.doublebuffer;
 
@@ -430,6 +433,8 @@ GLFWAPI void glfwWindowHint(int hint, int value)
             return;
         case GLFW_REFRESH_RATE:
             _glfw.hints.refreshRate = value;
+        case GLFW_CUSTOM_TITLEBAR:
+            _glfw.hints.window.customTitlebar = value ? GLFW_TRUE : GLFW_FALSE;
             return;
     }
 
@@ -543,6 +548,15 @@ GLFWAPI void glfwSetWindowTitle(GLFWwindow* handle, const char* title)
 
     _glfw.platform.setWindowTitle(window, title);
     _glfw_free(prev);
+}
+
+GLFWAPI void glfwSetCustomTitlebarProperties(const GLFWcustomtitlebar* props)
+{
+    assert(props != NULL);
+
+    _GLFW_REQUIRE_INIT();
+
+    _glfw.hints.window.customTitlebar_props = *props;
 }
 
 GLFWAPI void glfwSetWindowIcon(GLFWwindow* handle,

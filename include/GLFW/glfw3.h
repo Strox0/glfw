@@ -873,6 +873,9 @@ extern "C" {
  *  Window visibility [window hint](@ref GLFW_VISIBLE_hint) and
  *  [window attribute](@ref GLFW_VISIBLE_attrib).
  */
+
+#define GLFW_CUSTOM_TITLEBAR        0x06906901
+
 #define GLFW_VISIBLE                0x00020004
 /*! @brief Window decoration window hint and attribute
  *
@@ -1402,6 +1405,25 @@ typedef struct GLFWmonitor GLFWmonitor;
  *  @ingroup window
  */
 typedef struct GLFWwindow GLFWwindow;
+
+typedef struct GLFWRect
+{
+    int top;
+    int bottom;
+    int left;
+    int right;
+
+} GLFWRect;
+
+typedef struct GLFWcustomtitlebar
+{
+    int height;
+
+    GLFWRect closeButton;
+    GLFWRect minimizeButton;
+    GLFWRect maximizeButton;
+
+} GLFWcustomtitlebar;
 
 /*! @brief Opaque cursor object.
  *
@@ -2998,6 +3020,8 @@ GLFWAPI const GLFWgammaramp* glfwGetGammaRamp(GLFWmonitor* monitor);
  *  @ingroup monitor
  */
 GLFWAPI void glfwSetGammaRamp(GLFWmonitor* monitor, const GLFWgammaramp* ramp);
+
+GLFWAPI void glfwSetCustomTitlebarProperties(const GLFWcustomtitlebar* props);
 
 /*! @brief Resets all window hints to their default values.
  *

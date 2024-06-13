@@ -415,6 +415,8 @@ struct _GLFWwndconfig
     GLFWbool      mousePassthrough;
     GLFWbool      scaleToMonitor;
     GLFWbool      scaleFramebuffer;
+    GLFWbool      customTitlebar;
+    GLFWcustomtitlebar customTitlebar_props;
     struct {
         char      frameName[256];
     } ns;
@@ -539,12 +541,14 @@ struct _GLFWwindow
     GLFWbool            focusOnShow;
     GLFWbool            mousePassthrough;
     GLFWbool            shouldClose;
+    GLFWbool            customTitlebar;
     void*               userPointer;
     GLFWbool            doublebuffer;
     GLFWvidmode         videoMode;
     _GLFWmonitor*       monitor;
     _GLFWcursor*        cursor;
     char*               title;
+    GLFWcustomtitlebar  customTitlebar_props;
 
     int                 minwidth, minheight;
     int                 maxwidth, maxheight;
