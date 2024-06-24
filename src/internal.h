@@ -49,6 +49,7 @@
 #include "../include/GLFW/glfw3.h"
 
 #include <stdbool.h>
+#include <threads.h>
 
 #define _GLFW_INSERT_FIRST      0
 #define _GLFW_INSERT_LAST       1
@@ -566,6 +567,7 @@ struct _GLFWwindow
     GLFWbool            rawMouseMotion;
 
     _GLFWcontext        context;
+    mtx_t               mutex;
 
     struct {
         GLFWwindowposfun          pos;
@@ -755,6 +757,7 @@ struct _GLFWplatform
     void (*waitEvents)(void);
     void (*waitEventsTimeout)(double);
     void (*postEmptyEvent)(void);
+    void (*RefreshCustomTitlebarStatus)(_GLFWwindow*);
     // EGL
     EGLenum (*getEGLPlatform)(EGLint**);
     EGLNativeDisplayType (*getEGLNativeDisplay)(void);
@@ -1024,3 +1027,4 @@ void* _glfw_calloc(size_t count, size_t size);
 void* _glfw_realloc(void* pointer, size_t size);
 void _glfw_free(void* pointer);
 
+GLFWbool _glfwValidTitlebarProperties(GLFWcustomtitlebar* props);

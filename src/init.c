@@ -299,6 +299,37 @@ void _glfw_free(void* block)
         _glfw.allocator.deallocate(block, _glfw.allocator.user);
 }
 
+GLFWbool _glfwValidTitlebarProperties(GLFWcustomtitlebar* props)
+{
+    if (props->height < 0)
+    {
+        _glfwInputError(GLFW_INVALID_VALUE, "Invalid titlebar height");
+        return GLFW_FALSE;
+    }
+
+    if (props->closeButton.top < 0 || props->closeButton.bottom < 0 ||
+        props->closeButton.left < 0 || props->closeButton.right < 0)
+    {
+        _glfwInputError(GLFW_INVALID_VALUE, "Invalid close button rectangle");
+        return GLFW_FALSE;
+    }
+    
+    if (props->minimizeButton.top < 0 || props->minimizeButton.bottom < 0 ||
+        props->minimizeButton.left < 0 || props->minimizeButton.right < 0)
+    {
+        _glfwInputError(GLFW_INVALID_VALUE, "Invalid minimize button rectangle");
+        return GLFW_FALSE;
+    }
+
+    if (props->maximizeButton.top < 0 || props->maximizeButton.bottom < 0 ||
+        props->maximizeButton.left < 0 || props->maximizeButton.right < 0)
+    {
+        _glfwInputError(GLFW_INVALID_VALUE, "Invalid maximize button rectangle");
+        return GLFW_FALSE;
+    }
+
+    return GLFW_TRUE;
+}
 
 //////////////////////////////////////////////////////////////////////////
 //////                         GLFW event API                       //////

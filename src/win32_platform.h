@@ -128,19 +128,21 @@ typedef struct
 #endif
 #endif /*Windows 7*/
 
-#if WINVER < 0x0600
-#define DWM_BB_ENABLE 0x00000001
-#define DWM_BB_BLURREGION 0x00000002
-typedef struct
-{
-    DWORD dwFlags;
-    BOOL fEnable;
-    HRGN hRgnBlur;
-    BOOL fTransitionOnMaximized;
-} DWM_BLURBEHIND;
-#else
- #include <dwmapi.h>
-#endif /*Windows Vista*/
+//#if WINVER < 0x0600
+//#define DWM_BB_ENABLE 0x00000001
+//#define DWM_BB_BLURREGION 0x00000002
+//typedef struct
+//{
+//    DWORD dwFlags;
+//    BOOL fEnable;
+//    HRGN hRgnBlur;
+//    BOOL fTransitionOnMaximized;
+//} DWM_BLURBEHIND;
+//#else
+// #include <dwmapi.h>
+//#endif /*Windows Vista*/
+#include <dwmapi.h>
+#pragma comment(lib, "dwmapi.lib")
 
 #ifndef DPI_ENUMS_DECLARED
 typedef enum
@@ -575,6 +577,7 @@ void _glfwSetWindowFloatingWin32(_GLFWwindow* window, GLFWbool enabled);
 void _glfwSetWindowMousePassthroughWin32(_GLFWwindow* window, GLFWbool enabled);
 float _glfwGetWindowOpacityWin32(_GLFWwindow* window);
 void _glfwSetWindowOpacityWin32(_GLFWwindow* window, float opacity);
+void _glfwRefreshCustomTitlebarStatusWin32(_GLFWwindow* window);
 
 void _glfwSetRawMouseMotionWin32(_GLFWwindow *window, GLFWbool enabled);
 GLFWbool _glfwRawMouseMotionSupportedWin32(void);

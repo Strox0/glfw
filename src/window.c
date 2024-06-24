@@ -232,10 +232,10 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     window->floating         = wndconfig.floating;
     window->focusOnShow      = wndconfig.focusOnShow;
     window->mousePassthrough = wndconfig.mousePassthrough;
-    window->customTitlebar   = wndconfig.customTitlebar;
+    window->customTitlebar   = GLFW_FALSE;
     window->cursorMode       = GLFW_CURSOR_NORMAL;
 
-    window->customTitlebar_props = wndconfig.customTitlebar_props;
+    window->customTitlebar_props.topBorder = wndconfig.customTitlebar_props.topBorder;
 
     window->doublebuffer = fbconfig.doublebuffer;
 
@@ -246,6 +246,8 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     window->numer       = GLFW_DONT_CARE;
     window->denom       = GLFW_DONT_CARE;
     window->title       = _glfw_strdup(title);
+
+    mtx_init(&window->mutex, mtx_plain);
 
     if (!_glfw.platform.createWindow(window, &wndconfig, &ctxconfig, &fbconfig))
     {
@@ -279,6 +281,7 @@ void glfwDefaultWindowHints(void)
     _glfw.hints.window.xpos         = GLFW_ANY_POSITION;
     _glfw.hints.window.ypos         = GLFW_ANY_POSITION;
     _glfw.hints.window.scaleFramebuffer = GLFW_TRUE;
+    _glfw.hints.window.customTitlebar_props.topBorder = GLFW_CT_TOP_DEFAULT_BORDER;
 
     // The default is 24 bits of color, 24 bits of depth and 8 bits of stencil,
     // double buffered
@@ -433,8 +436,8 @@ GLFWAPI void glfwWindowHint(int hint, int value)
             return;
         case GLFW_REFRESH_RATE:
             _glfw.hints.refreshRate = value;
-        case GLFW_CUSTOM_TITLEBAR:
-            _glfw.hints.window.customTitlebar = value ? GLFW_TRUE : GLFW_FALSE;
+        case GLFW_CT_TOP_BORDER:
+            _glfw.hints.window.customTitlebar_props.topBorder = value;
             return;
     }
 
@@ -550,13 +553,55 @@ GLFWAPI void glfwSetWindowTitle(GLFWwindow* handle, const char* title)
     _glfw_free(prev);
 }
 
-GLFWAPI void glfwSetCustomTitlebarProperties(const GLFWcustomtitlebar* props)
+GLFWAPI void glfwSetCustomTitlebarButton(GLFWwindow* window, int button, GLFWRect* bouding_rect)
 {
-    assert(props != NULL);
+    assert(window != NULL);
+    assert(bouding_rect != NULL);
 
     _GLFW_REQUIRE_INIT();
 
-    _glfw.hints.window.customTitlebar_props = *props;
+    _GLFWwindow* win = (_GLFWwindow*)window;
+    mtx_lock(&win->mutex);
+
+    switch (button)
+    {
+    case GLFW_CT_MINIMIZE_BUTTON:
+        win->customTitlebar_props.minimizeButton = *bouding_rect;
+        break;
+    case GLFW_CT_MAXIMIZE_BUTTON:
+        win->customTitlebar_props.maximizeButton = *bouding_rect;
+        break;
+    case GLFW_CT_CLOSE_BUTTON:
+        win->customTitlebar_props.closeButton = *bouding_rect;
+        break;
+    default:
+        _glfwInputError(GLFW_INVALID_ENUM, "Invalid custom titlebar button 0x%08X", button);
+        break;
+    }
+
+    mtx_unlock(&win->mutex);
+}
+
+GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height)
+{
+    assert(window != NULL);
+    assert(height >= 0);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+    mtx_lock(&win->mutex);
+
+    win->customTitlebar_props.height = height;
+
+    mtx_unlock(&win->mutex);
+}
+
+GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window)
+{
+    assert(window != NULL);
+
+    return &((_GLFWwindow*)window)->customTitlebar_props;
 }
 
 GLFWAPI void glfwSetWindowIcon(GLFWwindow* handle,
@@ -948,6 +993,8 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* handle, int attrib)
             return window->context.release;
         case GLFW_CONTEXT_NO_ERROR:
             return window->context.noerror;
+        case GLFW_CUSTOM_TITLEBAR:
+            return window->customTitlebar;
     }
 
     _glfwInputError(GLFW_INVALID_ENUM, "Invalid window attribute 0x%08X", attrib);
@@ -998,6 +1045,27 @@ GLFWAPI void glfwSetWindowAttrib(GLFWwindow* handle, int attrib, int value)
     }
 
     _glfwInputError(GLFW_INVALID_ENUM, "Invalid window attribute 0x%08X", attrib);
+}
+
+GLFWAPI void glfwSetCustomTitleBar(GLFWwindow* window, int value)
+{
+    _GLFW_REQUIRE_INIT();
+
+    assert(value == GLFW_TRUE || value == GLFW_FALSE);
+    assert(window != NULL);
+
+    _GLFWwindow* win = (_GLFWwindow*) window;
+
+    win->customTitlebar = value;
+
+    if (_glfw.platform.platformID == GLFW_PLATFORM_WIN32)
+    {
+        _glfw.platform.RefreshCustomTitlebarStatus(win);
+    }
+    else
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Custom titlebar is not supported on this platform");
+    }
 }
 
 GLFWAPI GLFWmonitor* glfwGetWindowMonitor(GLFWwindow* handle)

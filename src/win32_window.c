@@ -50,7 +50,7 @@ static DWORD getWindowStyle(const _GLFWwindow* window)
 
         if (window->customTitlebar)
         {
-            style |= WS_MAXIMIZEBOX | WS_THICKFRAME;
+            style |= WS_MAXIMIZEBOX | WS_THICKFRAME | WS_OVERLAPPED | WS_CAPTION;
         }
         else if (window->decorated)
         {
@@ -544,7 +544,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
         {
             if (_glfwIsWindows10Version1607OrGreaterWin32())
             {
-                const CREATESTRUCTW* cs = (const CREATESTRUCTW*) lParam;
+                const CREATESTRUCTW* cs = (const CREATESTRUCTW*)lParam;
                 const _GLFWwndconfig* wndconfig = cs->lpCreateParams;
 
                 // On per-monitor DPI aware V1 systems, only enable
@@ -553,6 +553,22 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                 // area static when the non-client area is scaled
                 if (wndconfig && wndconfig->scaleToMonitor)
                     EnableNonClientDpiScaling(hWnd);
+            }
+
+            switch (_glfw.hints.window.customTitlebar_props.topBorder)
+            {
+            case GLFW_CT_TOP_COLOR_CHANGE:
+            {
+                COLORREF color = GetSysColor(COLOR_WINDOWFRAME);
+                DwmSetWindowAttribute(hWnd, DWMWA_CAPTION_COLOR, &color, sizeof(COLORREF));
+                break;
+            }
+            case GLFW_CT_TOP_THIN_BORDER:
+            {
+                DWORD p = DWMNCRP_ENABLED;
+                DwmSetWindowAttribute(hWnd, DWMWA_NCRENDERING_POLICY, &p, sizeof(DWORD));
+                break;
+            }
             }
         }
 
@@ -1024,7 +1040,6 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
         break;
     }
-
     case WM_SIZE:
     {
         const int width = LOWORD(lParam);
@@ -1045,6 +1060,23 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
         if (width != window->win32.width || height != window->win32.height)
         {
+            // Adjust custom titlebar button position rects
+            if (window->customTitlebar)
+            {
+                int diff_x, diff_y;
+                diff_x = width - window->win32.width;
+                diff_y = height - window->win32.height;
+
+                window->customTitlebar_props.closeButton.left += diff_x;
+                window->customTitlebar_props.closeButton.right += diff_x;
+
+                window->customTitlebar_props.maximizeButton.left += diff_x;
+                window->customTitlebar_props.maximizeButton.right += diff_x;
+
+                window->customTitlebar_props.minimizeButton.left += diff_x;
+                window->customTitlebar_props.minimizeButton.right += diff_x;
+            }
+
             window->win32.width = width;
             window->win32.height = height;
 
@@ -1165,7 +1197,6 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
         break;
     }
-
     case WM_DWMCOMPOSITIONCHANGED:
     case WM_DWMCOLORIZATIONCOLORCHANGED:
     {
@@ -1270,68 +1301,78 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
         DragFinish(drop);
         return 0;
     }
-    case WM_CREATE:
-    {
-        RECT size_rect;
-        GetWindowRect(hWnd, &size_rect);
-
-        // Inform the application of the frame change to force redrawing with the new
-        // client area that is extended into the title bar
-        SetWindowPos(hWnd, NULL, size_rect.left, size_rect.top,
-            size_rect.right - size_rect.left,
-            size_rect.bottom - size_rect.top,
-            SWP_FRAMECHANGED | SWP_NOMOVE | SWP_NOSIZE
-        );
-
-        break;
-    }
     case WM_NCHITTEST:
     {
         if (window->customTitlebar)
-        {
-            LRESULT hit = DefWindowProc(hWnd, uMsg, wParam, lParam);
+        {            
+            RECT rc;
+            GetClientRect(hWnd, &rc);
 
-            switch (hit) 
+            POINT cursor_p = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+            ScreenToClient(hWnd,&cursor_p);
+
+            int border_y = GetSystemMetricsForDpi(SM_CYFRAME, GetDpiForWindow(hWnd));
+            int border_x = GetSystemMetricsForDpi(SM_CXFRAME, GetDpiForWindow(hWnd));
+
+            if (cursor_p.y >= rc.bottom)
             {
-            case HTLEFT:
-            case HTRIGHT:
-            case HTBOTTOM:
-            case HTNOWHERE:
-            case HTBOTTOMLEFT:
-            case HTBOTTOMRIGHT:
-            case HTTOPLEFT:
-            case HTTOPRIGHT:
-                return hit;
+                if (cursor_p.x <= border_x)
+                    return HTBOTTOMLEFT;
+                if (cursor_p.x >= rc.right)
+                    return HTBOTTOMRIGHT;
+
+                return HTBOTTOM;
             }
-            
-            RECT r;
-            GetWindowRect(hWnd, &r);
-
-            WORD curs_x = GET_X_LPARAM(lParam);
-            WORD curs_y = GET_Y_LPARAM(lParam);
-
-            curs_x -= r.left;
-            curs_y -= r.top;
-
-            POINT cursor_p = { curs_x,curs_y };
-
-            if (curs_y <= 5)
+            if (cursor_p.y <= border_y)
             {
+                if (cursor_p.x <= border_x)
+                    return HTTOPLEFT;
+                if (cursor_p.x >= rc.right)
+                    return HTTOPRIGHT;
+
                 return HTTOP;
             }
-            else if (curs_y <= window->customTitlebar_props.height)
+            if (cursor_p.x <= border_x)
             {
-                if (PtInRect((RECT*)&window->customTitlebar_props.maximizeButton, cursor_p))
-                    return HTMAXBUTTON;
-                if (PtInRect((RECT*)&window->customTitlebar_props.minimizeButton, cursor_p))
-                    return HTMINBUTTON;
-                if (PtInRect((RECT*)&window->customTitlebar_props.closeButton, cursor_p))
-                    return HTCLOSE;
+                return HTLEFT;
+            }
+            if (cursor_p.x >= rc.right)
+            {
+                return HTRIGHT;
+            }
 
+            mtx_lock(&window->mutex);
+
+            if (!_glfwValidTitlebarProperties(&window->customTitlebar_props))
+            {
+                mtx_unlock(&window->mutex);
+                return HTCLIENT;
+            }
+
+            if (cursor_p.y <= window->customTitlebar_props.height)
+            {
+                if (PtInRect((RECT*)&window->customTitlebar_props.closeButton, cursor_p))
+                {
+                    mtx_unlock(&window->mutex);
+                    return HTCLOSE;
+                }
+                if (PtInRect((RECT*)&window->customTitlebar_props.minimizeButton, cursor_p))
+                {
+                    mtx_unlock(&window->mutex);
+                    return HTMINBUTTON;
+                }
+                if (PtInRect((RECT*)&window->customTitlebar_props.maximizeButton, cursor_p))
+                {
+                    mtx_unlock(&window->mutex);
+                    return HTMAXBUTTON;
+                }
+
+                mtx_unlock(&window->mutex);
                 return HTCAPTION;
             }
             else
             {
+                mtx_unlock(&window->mutex);
                 return HTCLIENT;
             }
         }
@@ -1342,22 +1383,31 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
         if (window->customTitlebar)
         {
             if (!wParam)
-                return DefWindowProc(hWnd, uMsg, wParam, lParam);
+                break;
 
             UINT dpi = GetDpiForWindow(hWnd);
 
-            int frame_x = GetSystemMetricsForDpi(SM_CXFRAME, dpi);
-            int frame_y = GetSystemMetricsForDpi(SM_CYFRAME, dpi);
-
+            int frame = GetSystemMetricsForDpi(SM_CXFRAME, dpi);
+            
             NCCALCSIZE_PARAMS* params = (NCCALCSIZE_PARAMS*)lParam;
             RECT* requested_client_rect = params->rgrc;
 
-            requested_client_rect->right -= frame_x;
-            requested_client_rect->left += frame_x;
-            requested_client_rect->bottom -= frame_y;
+            requested_client_rect->right -= frame;
+            requested_client_rect->left += frame;
+            requested_client_rect->bottom -= frame;
+
+            switch (_glfw.hints.window.customTitlebar_props.topBorder)
+            {
+            case GLFW_CT_TOP_COLOR_CHANGE:
+                requested_client_rect->top += 3;
+                break;
+            case GLFW_CT_TOP_THIN_BORDER:
+                requested_client_rect->top += 1;
+                break;
+            }
 
             if (IsZoomed(hWnd))
-                requested_client_rect->top += frame_y;
+                requested_client_rect->top += frame;
 
             return 0;
         }
@@ -2210,6 +2260,11 @@ void _glfwSetWindowOpacityWin32(_GLFWwindow* window, float opacity)
         exStyle &= ~WS_EX_LAYERED;
         SetWindowLongW(window->win32.handle, GWL_EXSTYLE, exStyle);
     }
+}
+
+void _glfwRefreshCustomTitlebarStatusWin32(_GLFWwindow* window)
+{
+    updateWindowStyles(window);
 }
 
 void _glfwSetRawMouseMotionWin32(_GLFWwindow *window, GLFWbool enabled)

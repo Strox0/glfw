@@ -876,6 +876,18 @@ extern "C" {
 
 #define GLFW_CUSTOM_TITLEBAR        0x06906901
 
+#define GLFW_CT_TOP_BORDER          0x06906902
+
+#define GLFW_CT_TOP_NO_BORDER       1
+#define GLFW_CT_TOP_THIN_BORDER     2
+#define GLFW_CT_TOP_COLOR_CHANGE    3
+#define GLFW_CT_TOP_DEFAULT_BORDER  4
+
+#define GLFW_CT_CLOSE_BUTTON        1
+#define GLFW_CT_MINIMIZE_BUTTON     2
+#define GLFW_CT_MAXIMIZE_BUTTON     3
+
+
 #define GLFW_VISIBLE                0x00020004
 /*! @brief Window decoration window hint and attribute
  *
@@ -1408,16 +1420,18 @@ typedef struct GLFWwindow GLFWwindow;
 
 typedef struct GLFWRect
 {
-    int top;
-    int bottom;
     int left;
+    int top;
     int right;
+    int bottom;
 
 } GLFWRect;
 
 typedef struct GLFWcustomtitlebar
 {
     int height;
+
+    int topBorder;
 
     GLFWRect closeButton;
     GLFWRect minimizeButton;
@@ -3021,7 +3035,10 @@ GLFWAPI const GLFWgammaramp* glfwGetGammaRamp(GLFWmonitor* monitor);
  */
 GLFWAPI void glfwSetGammaRamp(GLFWmonitor* monitor, const GLFWgammaramp* ramp);
 
-GLFWAPI void glfwSetCustomTitlebarProperties(const GLFWcustomtitlebar* props);
+GLFWAPI void glfwSetCustomTitlebarButton(GLFWwindow* window, int button, GLFWRect* bouding_rect);
+GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height);
+
+GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window);
 
 /*! @brief Resets all window hints to their default values.
  *
@@ -4176,6 +4193,8 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* window, int attrib);
  *  @ingroup window
  */
 GLFWAPI void glfwSetWindowAttrib(GLFWwindow* window, int attrib, int value);
+
+GLFWAPI void glfwSetCustomTitleBar(GLFWwindow* window, int value);
 
 /*! @brief Sets the user pointer of the specified window.
  *
