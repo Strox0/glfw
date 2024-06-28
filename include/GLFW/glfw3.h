@@ -1427,6 +1427,14 @@ typedef struct GLFWRect
 
 } GLFWRect;
 
+typedef struct GLFWChainRect
+{
+    GLFWRect rect;
+
+    struct GLFWChainRect* next;
+
+} GLFWChainRect;
+
 typedef struct GLFWcustomtitlebar
 {
     int height;
@@ -1436,6 +1444,8 @@ typedef struct GLFWcustomtitlebar
     GLFWRect closeButton;
     GLFWRect minimizeButton;
     GLFWRect maximizeButton;
+
+    GLFWChainRect* exclusions;
 
 } GLFWcustomtitlebar;
 
@@ -3037,6 +3047,7 @@ GLFWAPI void glfwSetGammaRamp(GLFWmonitor* monitor, const GLFWgammaramp* ramp);
 
 GLFWAPI void glfwSetCustomTitlebarButton(GLFWwindow* window, int button, GLFWRect* bouding_rect);
 GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height);
+GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainRect* exclusion_rect);
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window);
 

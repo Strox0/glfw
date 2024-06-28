@@ -48,11 +48,7 @@ static DWORD getWindowStyle(const _GLFWwindow* window)
     {
         style |= WS_SYSMENU | WS_MINIMIZEBOX;
 
-        if (window->customTitlebar)
-        {
-            style |= WS_MAXIMIZEBOX | WS_THICKFRAME | WS_OVERLAPPED | WS_CAPTION;
-        }
-        else if (window->decorated)
+        if (window->decorated)
         {
             style |= WS_CAPTION;
 
@@ -1361,10 +1357,21 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                     mtx_unlock(&window->mutex);
                     return HTMINBUTTON;
                 }
-                if (PtInRect((RECT*)&window->customTitlebar_props.maximizeButton, cursor_p))
+                if (window->resizable && PtInRect((RECT*)&window->customTitlebar_props.maximizeButton, cursor_p))
                 {
                     mtx_unlock(&window->mutex);
                     return HTMAXBUTTON;
+                }
+
+                GLFWChainRect* chain = window->customTitlebar_props.exclusions;
+                while (chain)
+                {
+                    if (PtInRect((RECT*)&chain->rect, cursor_p))
+                    {
+                        mtx_unlock(&window->mutex);
+                        return HTCLIENT;
+                    }
+                    chain = chain->next;
                 }
 
                 mtx_unlock(&window->mutex);

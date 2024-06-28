@@ -236,6 +236,7 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     window->cursorMode       = GLFW_CURSOR_NORMAL;
 
     window->customTitlebar_props.topBorder = wndconfig.customTitlebar_props.topBorder;
+    window->customTitlebar_props.exclusions = NULL;
 
     window->doublebuffer = fbconfig.doublebuffer;
 
@@ -595,6 +596,31 @@ GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height)
     win->customTitlebar_props.height = height;
 
     mtx_unlock(&win->mutex);
+}
+
+GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainRect* exclusion_rect)
+{
+    assert(window != NULL);
+    assert(exclusion_rect != NULL);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+
+    if (win->customTitlebar_props.exclusions == NULL)
+    {
+        win->customTitlebar_props.exclusions = exclusion_rect;
+    }
+    else
+    {
+        GLFWChainRect* current = win->customTitlebar_props.exclusions;
+        while (current->next != NULL)
+        {
+            current = current->next;
+        }
+
+        current->next = exclusion_rect;
+    }
 }
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window)
