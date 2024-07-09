@@ -887,6 +887,9 @@ extern "C" {
 #define GLFW_CT_MINIMIZE_BUTTON     2
 #define GLFW_CT_MAXIMIZE_BUTTON     3
 
+#define GLFW_CT_ALIGN_LEFT          1
+#define GLFW_CT_ALIGN_CENTER        2
+#define GLFW_CT_ALIGN_RIGHT         3
 
 #define GLFW_VISIBLE                0x00020004
 /*! @brief Window decoration window hint and attribute
@@ -1418,34 +1421,39 @@ typedef struct GLFWmonitor GLFWmonitor;
  */
 typedef struct GLFWwindow GLFWwindow;
 
-typedef struct GLFWRect
+typedef struct GLFWChainSpec
 {
-    int left;
-    int top;
-    int right;
-    int bottom;
+    union 
+    {
+        int buttonType;
+        float startOffset;
+    };
 
-} GLFWRect;
+    int height;
+    int width;
+    int topOffset;
 
-typedef struct GLFWChainRect
+    struct GLFWChainSpec* next;
+
+} GLFWChainSpec;
+
+typedef struct GLFWTitlebarGroup
 {
-    GLFWRect rect;
+    GLFWChainSpec* buttons;
 
-    struct GLFWChainRect* next;
+    short alignment;
+    float edgeOffset;
 
-} GLFWChainRect;
+} GLFWTitlebarButtonGroup,GLFWTitlebarExclusionGroup;
 
 typedef struct GLFWcustomtitlebar
 {
     int height;
-
     int topBorder;
 
-    GLFWRect closeButton;
-    GLFWRect minimizeButton;
-    GLFWRect maximizeButton;
+    GLFWTitlebarButtonGroup groups[3];
 
-    GLFWChainRect* exclusions;
+    GLFWChainSpec* exclusions;
 
 } GLFWcustomtitlebar;
 
@@ -3045,9 +3053,11 @@ GLFWAPI const GLFWgammaramp* glfwGetGammaRamp(GLFWmonitor* monitor);
  */
 GLFWAPI void glfwSetGammaRamp(GLFWmonitor* monitor, const GLFWgammaramp* ramp);
 
-GLFWAPI void glfwSetCustomTitlebarButton(GLFWwindow* window, int button, GLFWRect* bouding_rect);
 GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height);
-GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainRect* exclusion_rect);
+GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* exclusion_rect);
+GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short group_id, GLFWChainSpec* buttons);
+GLFWAPI void glfwCustomTitlebarSetGroupAlignment(GLFWwindow* window, unsigned short group_id, unsigned short alignment);
+GLFWAPI void glfwCustomTitlebarSetGroupOffset(GLFWwindow* window, unsigned short group_id, float edgeOffset);
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window);
 

@@ -554,35 +554,6 @@ GLFWAPI void glfwSetWindowTitle(GLFWwindow* handle, const char* title)
     _glfw_free(prev);
 }
 
-GLFWAPI void glfwSetCustomTitlebarButton(GLFWwindow* window, int button, GLFWRect* bouding_rect)
-{
-    assert(window != NULL);
-    assert(bouding_rect != NULL);
-
-    _GLFW_REQUIRE_INIT();
-
-    _GLFWwindow* win = (_GLFWwindow*)window;
-    mtx_lock(&win->mutex);
-
-    switch (button)
-    {
-    case GLFW_CT_MINIMIZE_BUTTON:
-        win->customTitlebar_props.minimizeButton = *bouding_rect;
-        break;
-    case GLFW_CT_MAXIMIZE_BUTTON:
-        win->customTitlebar_props.maximizeButton = *bouding_rect;
-        break;
-    case GLFW_CT_CLOSE_BUTTON:
-        win->customTitlebar_props.closeButton = *bouding_rect;
-        break;
-    default:
-        _glfwInputError(GLFW_INVALID_ENUM, "Invalid custom titlebar button 0x%08X", button);
-        break;
-    }
-
-    mtx_unlock(&win->mutex);
-}
-
 GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height)
 {
     assert(window != NULL);
@@ -598,7 +569,7 @@ GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height)
     mtx_unlock(&win->mutex);
 }
 
-GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainRect* exclusion_rect)
+GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* exclusion_rect)
 {
     assert(window != NULL);
     assert(exclusion_rect != NULL);
@@ -613,14 +584,79 @@ GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainRect* e
     }
     else
     {
-        GLFWChainRect* current = win->customTitlebar_props.exclusions;
-        while (current->next != NULL)
+        GLFWChainSpec* current = win->customTitlebar_props.exclusions;
+        GLFWChainSpec* loop_detect = current;
+        while (current->next && loop_detect && loop_detect->next->next)
         {
             current = current->next;
+            loop_detect = loop_detect->next->next;
+            if (current == loop_detect)
+            {
+                _glfwInputError(GLFW_INVALID_VALUE, "Loop detected in exclusion chain");
+                return;
+            }
         }
 
         current->next = exclusion_rect;
     }
+}
+
+GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short group_id, GLFWChainSpec* buttons)
+{
+    assert(window != NULL);
+    assert(buttons != NULL);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+
+    if (win->customTitlebar_props.groups[group_id].buttons == NULL)
+    {
+        win->customTitlebar_props.groups[group_id].buttons = buttons;
+    }
+    else
+    {
+        GLFWChainSpec* current = win->customTitlebar_props.groups[group_id].buttons;
+        GLFWChainSpec* loop_detect = current;
+        while (current->next && loop_detect && loop_detect->next->next)
+        {
+            current = current->next;
+            loop_detect = loop_detect->next->next;
+            if (current == loop_detect)
+            {
+                _glfwInputError(GLFW_INVALID_VALUE, "Loop detected in button chain");
+                return;
+            }
+        }
+
+        current->next = buttons;
+    }
+}
+
+GLFWAPI void glfwCustomTitlebarSetGroupAlignment(GLFWwindow* window, unsigned short group_id, unsigned short alignment)
+{
+    assert(window != NULL);
+    assert(group_id >= 0);
+    assert(group_id <= GLFW_CT_ALIGN_RIGHT);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+
+    win->customTitlebar_props.groups[group_id].alignment = alignment;
+}
+
+void glfwCustomTitlebarSetGroupOffset(GLFWwindow* window, unsigned short group_id, float offset)
+{
+    assert(window != NULL);
+    assert(group_id >= 0);
+    assert(group_id <= GLFW_CT_ALIGN_RIGHT);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+
+    win->customTitlebar_props.groups[group_id].edgeOffset = offset;
 }
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window)

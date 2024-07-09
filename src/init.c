@@ -307,24 +307,9 @@ GLFWbool _glfwValidTitlebarProperties(GLFWcustomtitlebar* props)
         return GLFW_FALSE;
     }
 
-    if (props->closeButton.top < 0 || props->closeButton.bottom < 0 ||
-        props->closeButton.left < 0 || props->closeButton.right < 0)
+    if (props->topBorder < 0 && props->topBorder > GLFW_CT_TOP_COLOR_CHANGE)
     {
-        _glfwInputError(GLFW_INVALID_VALUE, "Invalid close button rectangle");
-        return GLFW_FALSE;
-    }
-    
-    if (props->minimizeButton.top < 0 || props->minimizeButton.bottom < 0 ||
-        props->minimizeButton.left < 0 || props->minimizeButton.right < 0)
-    {
-        _glfwInputError(GLFW_INVALID_VALUE, "Invalid minimize button rectangle");
-        return GLFW_FALSE;
-    }
-
-    if (props->maximizeButton.top < 0 || props->maximizeButton.bottom < 0 ||
-        props->maximizeButton.left < 0 || props->maximizeButton.right < 0)
-    {
-        _glfwInputError(GLFW_INVALID_VALUE, "Invalid maximize button rectangle");
+        _glfwInputError(GLFW_INVALID_VALUE, "Invalid top border parameter");
         return GLFW_FALSE;
     }
 

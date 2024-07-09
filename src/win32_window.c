@@ -1056,23 +1056,6 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
         if (width != window->win32.width || height != window->win32.height)
         {
-            // Adjust custom titlebar button position rects
-            if (window->customTitlebar)
-            {
-                int diff_x, diff_y;
-                diff_x = width - window->win32.width;
-                diff_y = height - window->win32.height;
-
-                window->customTitlebar_props.closeButton.left += diff_x;
-                window->customTitlebar_props.closeButton.right += diff_x;
-
-                window->customTitlebar_props.maximizeButton.left += diff_x;
-                window->customTitlebar_props.maximizeButton.right += diff_x;
-
-                window->customTitlebar_props.minimizeButton.left += diff_x;
-                window->customTitlebar_props.minimizeButton.right += diff_x;
-            }
-
             window->win32.width = width;
             window->win32.height = height;
 
@@ -1347,31 +1330,100 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
             if (cursor_p.y <= window->customTitlebar_props.height)
             {
-                if (PtInRect((RECT*)&window->customTitlebar_props.closeButton, cursor_p))
+                for (int i = 0; i < 3; i++)
                 {
-                    mtx_unlock(&window->mutex);
-                    return HTCLOSE;
-                }
-                if (PtInRect((RECT*)&window->customTitlebar_props.minimizeButton, cursor_p))
-                {
-                    mtx_unlock(&window->mutex);
-                    return HTMINBUTTON;
-                }
-                if (window->resizable && PtInRect((RECT*)&window->customTitlebar_props.maximizeButton, cursor_p))
-                {
-                    mtx_unlock(&window->mutex);
-                    return HTMAXBUTTON;
+                    GLFWChainSpec* chain = window->customTitlebar_props.groups[i].buttons;
+                    GLFWChainSpec* loop_detect = chain;
+                    if (!chain)
+                        continue;
+
+                    int start_pos = 0;
+
+                    switch (window->customTitlebar_props.groups[i].alignment)
+                    {
+                    case GLFW_CT_ALIGN_LEFT:
+                        start_pos = window->customTitlebar_props.groups[i].edgeOffset * window->win32.width;
+                        break;
+                    case GLFW_CT_ALIGN_RIGHT:
+                        start_pos = window->win32.width - window->customTitlebar_props.groups[i].edgeOffset * window->win32.width - chain->width;
+                        break;
+                    case GLFW_CT_ALIGN_CENTER:
+                    {
+                        int width_sum = 0;
+                        GLFWChainSpec* chain_c = chain;
+                        while (chain_c)
+                        {
+                            width_sum += chain_c->width;
+                            chain_c = chain_c->next;
+                        }
+                        start_pos = (window->win32.width - width_sum) / 2;
+                        break;
+                    }
+                    default:
+                        _glfwInputError(GLFW_INVALID_ENUM, "Invalid button group alignment");
+                        mtx_unlock(&window->mutex);
+                        return HTCAPTION;
+                    }
+
+                    while (chain && loop_detect->next && loop_detect->next->next)
+                    {
+                        RECT rect = { 0 };
+                        rect.top = chain->topOffset;
+                        rect.bottom = chain->topOffset + chain->height;
+                        rect.left = start_pos;
+                        rect.right = start_pos + chain->width;
+
+                        if (PtInRect(&rect, cursor_p))
+                        {
+                            mtx_unlock(&window->mutex);
+                            switch (chain->buttonType)
+                            {
+                            case GLFW_CT_CLOSE_BUTTON:
+                                return HTCLOSE;
+                                break;
+                            case GLFW_CT_MINIMIZE_BUTTON:
+                                return HTMINBUTTON;
+                                break;
+                            case GLFW_CT_MAXIMIZE_BUTTON:
+                                return HTMAXBUTTON;
+                                break;
+                            default:
+                                _glfwInputError(GLFW_INVALID_ENUM, "Invalid button type");
+                                return HTCAPTION;
+                            }
+                        }
+
+                        if (window->customTitlebar_props.groups[i].alignment == GLFW_CT_ALIGN_LEFT || window->customTitlebar_props.groups[i].alignment == GLFW_CT_ALIGN_CENTER)
+                            start_pos += chain->width;
+                        else if (window->customTitlebar_props.groups[i].alignment == GLFW_CT_ALIGN_RIGHT)
+                            start_pos -= chain->width;
+
+                        chain = chain->next;
+                        loop_detect = loop_detect->next->next;
+                        if (chain == loop_detect)
+                            break;
+                    }
                 }
 
-                GLFWChainRect* chain = window->customTitlebar_props.exclusions;
-                while (chain)
+                GLFWChainSpec* chain = window->customTitlebar_props.exclusions;
+                GLFWChainSpec* loop_detect = chain;
+                while (chain && loop_detect->next && loop_detect->next->next)
                 {
-                    if (PtInRect((RECT*)&chain->rect, cursor_p))
+                    RECT rect = {0};
+                    rect.top = chain->topOffset;
+                    rect.bottom = chain->topOffset + chain->height;
+                    rect.left = chain->startOffset * window->win32.width;
+                    rect.right = rect.left + chain->width;                    
+
+                    if (PtInRect(&rect, cursor_p))
                     {
                         mtx_unlock(&window->mutex);
                         return HTCLIENT;
                     }
                     chain = chain->next;
+                    loop_detect = loop_detect->next->next;
+                    if (chain == loop_detect)
+                        break;
                 }
 
                 mtx_unlock(&window->mutex);
