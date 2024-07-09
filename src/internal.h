@@ -417,7 +417,7 @@ struct _GLFWwndconfig
     GLFWbool      scaleToMonitor;
     GLFWbool      scaleFramebuffer;
     GLFWbool      customTitlebar;
-    GLFWcustomtitlebar customTitlebar_props;
+    GLFWcustomtitlebar customTitlebarProps;
     struct {
         char      frameName[256];
     } ns;
@@ -549,7 +549,7 @@ struct _GLFWwindow
     _GLFWmonitor*       monitor;
     _GLFWcursor*        cursor;
     char*               title;
-    GLFWcustomtitlebar  customTitlebar_props;
+    GLFWcustomtitlebar  customTitlebarProps;
 
     int                 minwidth, minheight;
     int                 maxwidth, maxheight;
@@ -1026,5 +1026,3 @@ int _glfw_max(int a, int b);
 void* _glfw_calloc(size_t count, size_t size);
 void* _glfw_realloc(void* pointer, size_t size);
 void _glfw_free(void* pointer);
-
-GLFWbool _glfwValidTitlebarProperties(GLFWcustomtitlebar* props);

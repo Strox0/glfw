@@ -881,7 +881,7 @@ extern "C" {
 #define GLFW_CT_TOP_NO_BORDER       1
 #define GLFW_CT_TOP_THIN_BORDER     2
 #define GLFW_CT_TOP_COLOR_CHANGE    3
-#define GLFW_CT_TOP_DEFAULT_BORDER  4
+#define GLFW_CT_TOP_DEFAULT_BORDER  GLFW_CT_TOP_NO_BORDER
 
 #define GLFW_CT_CLOSE_BUTTON        1
 #define GLFW_CT_MINIMIZE_BUTTON     2
@@ -3054,10 +3054,11 @@ GLFWAPI const GLFWgammaramp* glfwGetGammaRamp(GLFWmonitor* monitor);
 GLFWAPI void glfwSetGammaRamp(GLFWmonitor* monitor, const GLFWgammaramp* ramp);
 
 GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height);
-GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* exclusion_rect);
+GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* exclusions);
 GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short group_id, GLFWChainSpec* buttons);
 GLFWAPI void glfwCustomTitlebarSetGroupAlignment(GLFWwindow* window, unsigned short group_id, unsigned short alignment);
 GLFWAPI void glfwCustomTitlebarSetGroupOffset(GLFWwindow* window, unsigned short group_id, float edgeOffset);
+GLFWAPI void glfCustomTitlebarRemoveExclusions(GLFWwindow* window);
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window);
 

@@ -235,8 +235,11 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     window->customTitlebar   = GLFW_FALSE;
     window->cursorMode       = GLFW_CURSOR_NORMAL;
 
-    window->customTitlebar_props.topBorder = wndconfig.customTitlebar_props.topBorder;
-    window->customTitlebar_props.exclusions = NULL;
+    window->customTitlebarProps.topBorder = wndconfig.customTitlebarProps.topBorder;
+    window->customTitlebarProps.exclusions = NULL;
+    window->customTitlebarProps.groups[0].buttons = NULL;
+    window->customTitlebarProps.groups[1].buttons = NULL;
+    window->customTitlebarProps.groups[2].buttons = NULL;
 
     window->doublebuffer = fbconfig.doublebuffer;
 
@@ -282,7 +285,7 @@ void glfwDefaultWindowHints(void)
     _glfw.hints.window.xpos         = GLFW_ANY_POSITION;
     _glfw.hints.window.ypos         = GLFW_ANY_POSITION;
     _glfw.hints.window.scaleFramebuffer = GLFW_TRUE;
-    _glfw.hints.window.customTitlebar_props.topBorder = GLFW_CT_TOP_DEFAULT_BORDER;
+    _glfw.hints.window.customTitlebarProps.topBorder = GLFW_CT_TOP_DEFAULT_BORDER;
 
     // The default is 24 bits of color, 24 bits of depth and 8 bits of stencil,
     // double buffered
@@ -438,7 +441,7 @@ GLFWAPI void glfwWindowHint(int hint, int value)
         case GLFW_REFRESH_RATE:
             _glfw.hints.refreshRate = value;
         case GLFW_CT_TOP_BORDER:
-            _glfw.hints.window.customTitlebar_props.topBorder = value;
+            _glfw.hints.window.customTitlebarProps.topBorder = value;
             return;
     }
 
@@ -504,6 +507,22 @@ GLFWAPI void glfwDestroyWindow(GLFWwindow* handle)
         *prev = window->next;
     }
 
+    if (window->customTitlebarProps.exclusions)
+        glfCustomTitlebarRemoveExclusions(window);
+
+    for (int i = 0; i < 3; i++)
+    {
+        GLFWChainSpec* current = window->customTitlebarProps.groups[i].buttons;
+        while (current)
+        {
+            GLFWChainSpec* next = current->next;
+            _glfw_free(current);
+            current = next;
+        }
+    }
+    
+    mtx_destroy(&window->mutex);
+
     _glfw_free(window->title);
     _glfw_free(window);
 }
@@ -564,29 +583,29 @@ GLFWAPI void glfwSetCustomTitlebarHeight(GLFWwindow* window, int height)
     _GLFWwindow* win = (_GLFWwindow*)window;
     mtx_lock(&win->mutex);
 
-    win->customTitlebar_props.height = height;
+    win->customTitlebarProps.height = height;
 
     mtx_unlock(&win->mutex);
 }
 
-GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* exclusion_rect)
+GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* exclusions)
 {
     assert(window != NULL);
-    assert(exclusion_rect != NULL);
+    assert(exclusions != NULL);
 
     _GLFW_REQUIRE_INIT();
 
     _GLFWwindow* win = (_GLFWwindow*)window;
 
-    if (win->customTitlebar_props.exclusions == NULL)
+    if (win->customTitlebarProps.exclusions == NULL)
     {
-        win->customTitlebar_props.exclusions = exclusion_rect;
+        win->customTitlebarProps.exclusions = exclusions;
     }
     else
     {
-        GLFWChainSpec* current = win->customTitlebar_props.exclusions;
+        GLFWChainSpec* current = win->customTitlebarProps.exclusions;
         GLFWChainSpec* loop_detect = current;
-        while (current->next && loop_detect && loop_detect->next->next)
+        while (current && loop_detect->next)
         {
             current = current->next;
             loop_detect = loop_detect->next->next;
@@ -597,7 +616,7 @@ GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* e
             }
         }
 
-        current->next = exclusion_rect;
+        current->next = exclusions;
     }
 }
 
@@ -610,15 +629,15 @@ GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short gro
 
     _GLFWwindow* win = (_GLFWwindow*)window;
 
-    if (win->customTitlebar_props.groups[group_id].buttons == NULL)
+    if (win->customTitlebarProps.groups[group_id].buttons == NULL)
     {
-        win->customTitlebar_props.groups[group_id].buttons = buttons;
+        win->customTitlebarProps.groups[group_id].buttons = buttons;
     }
     else
     {
-        GLFWChainSpec* current = win->customTitlebar_props.groups[group_id].buttons;
+        GLFWChainSpec* current = win->customTitlebarProps.groups[group_id].buttons;
         GLFWChainSpec* loop_detect = current;
-        while (current->next && loop_detect && loop_detect->next->next)
+        while (current && loop_detect->next)
         {
             current = current->next;
             loop_detect = loop_detect->next->next;
@@ -637,33 +656,56 @@ GLFWAPI void glfwCustomTitlebarSetGroupAlignment(GLFWwindow* window, unsigned sh
 {
     assert(window != NULL);
     assert(group_id >= 0);
-    assert(group_id <= GLFW_CT_ALIGN_RIGHT);
+    assert(group_id < 3);
+    assert(alignment >= 1);
+    assert(alignment <= GLFW_CT_ALIGN_RIGHT);
 
     _GLFW_REQUIRE_INIT();
 
     _GLFWwindow* win = (_GLFWwindow*)window;
 
-    win->customTitlebar_props.groups[group_id].alignment = alignment;
+    win->customTitlebarProps.groups[group_id].alignment = alignment;
 }
 
 void glfwCustomTitlebarSetGroupOffset(GLFWwindow* window, unsigned short group_id, float offset)
 {
     assert(window != NULL);
     assert(group_id >= 0);
-    assert(group_id <= GLFW_CT_ALIGN_RIGHT);
+    assert(group_id < 3);
+    assert(offset >= 0);
+    assert(offset <= 1.0f);
 
     _GLFW_REQUIRE_INIT();
 
     _GLFWwindow* win = (_GLFWwindow*)window;
 
-    win->customTitlebar_props.groups[group_id].edgeOffset = offset;
+    win->customTitlebarProps.groups[group_id].edgeOffset = offset;
+}
+
+void glfCustomTitlebarRemoveExclusions(GLFWwindow* window)
+{
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+
+    GLFWChainSpec* current = win->customTitlebarProps.exclusions;
+    while (current)
+    {
+        GLFWChainSpec* next = current->next;
+        _glfw_free(current);
+        current = next;
+    }
+
+    win->customTitlebarProps.exclusions = NULL;
 }
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window)
 {
     assert(window != NULL);
 
-    return &((_GLFWwindow*)window)->customTitlebar_props;
+    return &((_GLFWwindow*)window)->customTitlebarProps;
 }
 
 GLFWAPI void glfwSetWindowIcon(GLFWwindow* handle,

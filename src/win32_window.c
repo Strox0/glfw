@@ -551,7 +551,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                     EnableNonClientDpiScaling(hWnd);
             }
 
-            switch (_glfw.hints.window.customTitlebar_props.topBorder)
+            switch (_glfw.hints.window.customTitlebarProps.topBorder)
             {
             case GLFW_CT_TOP_COLOR_CHANGE:
             {
@@ -565,6 +565,8 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                 DwmSetWindowAttribute(hWnd, DWMWA_NCRENDERING_POLICY, &p, sizeof(DWORD));
                 break;
             }
+            default:
+                break;
             }
         }
 
@@ -1322,40 +1324,41 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
             mtx_lock(&window->mutex);
 
-            if (!_glfwValidTitlebarProperties(&window->customTitlebar_props))
-            {
-                mtx_unlock(&window->mutex);
-                return HTCLIENT;
-            }
-
-            if (cursor_p.y <= window->customTitlebar_props.height)
+            if (cursor_p.y <= window->customTitlebarProps.height)
             {
                 for (int i = 0; i < 3; i++)
                 {
-                    GLFWChainSpec* chain = window->customTitlebar_props.groups[i].buttons;
+                    GLFWChainSpec* chain = window->customTitlebarProps.groups[i].buttons;
                     GLFWChainSpec* loop_detect = chain;
                     if (!chain)
                         continue;
 
                     int start_pos = 0;
 
-                    switch (window->customTitlebar_props.groups[i].alignment)
+                    switch (window->customTitlebarProps.groups[i].alignment)
                     {
                     case GLFW_CT_ALIGN_LEFT:
-                        start_pos = window->customTitlebar_props.groups[i].edgeOffset * window->win32.width;
+                        start_pos = window->customTitlebarProps.groups[i].edgeOffset * window->win32.width;
                         break;
                     case GLFW_CT_ALIGN_RIGHT:
-                        start_pos = window->win32.width - window->customTitlebar_props.groups[i].edgeOffset * window->win32.width - chain->width;
+                        start_pos = window->win32.width - window->customTitlebarProps.groups[i].edgeOffset * window->win32.width - chain->width;
                         break;
                     case GLFW_CT_ALIGN_CENTER:
                     {
                         int width_sum = 0;
                         GLFWChainSpec* chain_c = chain;
-                        while (chain_c)
+                        while (chain_c && loop_detect->next)
                         {
                             width_sum += chain_c->width;
                             chain_c = chain_c->next;
+                            loop_detect = loop_detect->next->next;
+                            if (chain_c == loop_detect)
+                            {
+                                width_sum += chain_c->width;
+                                break;
+                            }
                         }
+                        loop_detect = chain;
                         start_pos = (window->win32.width - width_sum) / 2;
                         break;
                     }
@@ -1365,7 +1368,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                         return HTCAPTION;
                     }
 
-                    while (chain && loop_detect->next && loop_detect->next->next)
+                    while (chain && loop_detect->next)
                     {
                         RECT rect = { 0 };
                         rect.top = chain->topOffset;
@@ -1393,21 +1396,48 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                             }
                         }
 
-                        if (window->customTitlebar_props.groups[i].alignment == GLFW_CT_ALIGN_LEFT || window->customTitlebar_props.groups[i].alignment == GLFW_CT_ALIGN_CENTER)
+                        if (window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_LEFT || window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_CENTER)
                             start_pos += chain->width;
-                        else if (window->customTitlebar_props.groups[i].alignment == GLFW_CT_ALIGN_RIGHT)
+                        else if (window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_RIGHT)
                             start_pos -= chain->width;
 
                         chain = chain->next;
                         loop_detect = loop_detect->next->next;
                         if (chain == loop_detect)
+                        {
+                            RECT rect = { 0 };
+                            rect.top = chain->topOffset;
+                            rect.bottom = chain->topOffset + chain->height;
+                            rect.left = start_pos;
+                            rect.right = start_pos + chain->width;
+
+                            if (PtInRect(&rect, cursor_p))
+                            {
+                                mtx_unlock(&window->mutex);
+                                switch (chain->buttonType)
+                                {
+                                case GLFW_CT_CLOSE_BUTTON:
+                                    return HTCLOSE;
+                                    break;
+                                case GLFW_CT_MINIMIZE_BUTTON:
+                                    return HTMINBUTTON;
+                                    break;
+                                case GLFW_CT_MAXIMIZE_BUTTON:
+                                    return HTMAXBUTTON;
+                                    break;
+                                default:
+                                    _glfwInputError(GLFW_INVALID_ENUM, "Invalid button type");
+                                    return HTCAPTION;
+                                }
+                            }
                             break;
+                        }
                     }
                 }
 
-                GLFWChainSpec* chain = window->customTitlebar_props.exclusions;
+                GLFWChainSpec* chain = window->customTitlebarProps.exclusions;
                 GLFWChainSpec* loop_detect = chain;
-                while (chain && loop_detect->next && loop_detect->next->next)
+                while (chain && loop_detect->next)
                 {
                     RECT rect = {0};
                     rect.top = chain->topOffset;
@@ -1423,7 +1453,20 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                     chain = chain->next;
                     loop_detect = loop_detect->next->next;
                     if (chain == loop_detect)
+                    {
+                        RECT rect = { 0 };
+                        rect.top = chain->topOffset;
+                        rect.bottom = chain->topOffset + chain->height;
+                        rect.left = chain->startOffset * window->win32.width;
+                        rect.right = rect.left + chain->width;
+
+                        if (PtInRect(&rect, cursor_p))
+                        {
+                            mtx_unlock(&window->mutex);
+                            return HTCLIENT;
+                        }
                         break;
+                    }
                 }
 
                 mtx_unlock(&window->mutex);
@@ -1455,13 +1498,15 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
             requested_client_rect->left += frame;
             requested_client_rect->bottom -= frame;
 
-            switch (_glfw.hints.window.customTitlebar_props.topBorder)
+            switch (_glfw.hints.window.customTitlebarProps.topBorder)
             {
             case GLFW_CT_TOP_COLOR_CHANGE:
                 requested_client_rect->top += 3;
                 break;
             case GLFW_CT_TOP_THIN_BORDER:
                 requested_client_rect->top += 1;
+                break;
+            default:
                 break;
             }
 

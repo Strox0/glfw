@@ -299,23 +299,6 @@ void _glfw_free(void* block)
         _glfw.allocator.deallocate(block, _glfw.allocator.user);
 }
 
-GLFWbool _glfwValidTitlebarProperties(GLFWcustomtitlebar* props)
-{
-    if (props->height < 0)
-    {
-        _glfwInputError(GLFW_INVALID_VALUE, "Invalid titlebar height");
-        return GLFW_FALSE;
-    }
-
-    if (props->topBorder < 0 && props->topBorder > GLFW_CT_TOP_COLOR_CHANGE)
-    {
-        _glfwInputError(GLFW_INVALID_VALUE, "Invalid top border parameter");
-        return GLFW_FALSE;
-    }
-
-    return GLFW_TRUE;
-}
-
 //////////////////////////////////////////////////////////////////////////
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
