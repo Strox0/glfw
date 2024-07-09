@@ -604,16 +604,16 @@ GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* e
     else
     {
         GLFWChainSpec* current = win->customTitlebarProps.exclusions;
-        GLFWChainSpec* loop_detect = current;
-        while (current && loop_detect->next)
+        int it_counter = 0;
+        while (current)
         {
-            current = current->next;
-            loop_detect = loop_detect->next->next;
-            if (current == loop_detect)
+            if (it_counter == 50)
             {
-                _glfwInputError(GLFW_INVALID_VALUE, "Loop detected in exclusion chain");
+                _glfwInputError(GLFW_INVALID_VALUE, "Possible loop detected in exclusion chain");
                 return;
             }
+            current = current->next;
+            it_counter++;
         }
 
         current->next = exclusions;
@@ -636,16 +636,16 @@ GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short gro
     else
     {
         GLFWChainSpec* current = win->customTitlebarProps.groups[group_id].buttons;
-        GLFWChainSpec* loop_detect = current;
-        while (current && loop_detect->next)
+        int it_counter = 0;
+        while (current)
         {
-            current = current->next;
-            loop_detect = loop_detect->next->next;
-            if (current == loop_detect)
+            if (it_counter == 50)
             {
-                _glfwInputError(GLFW_INVALID_VALUE, "Loop detected in button chain");
+                _glfwInputError(GLFW_INVALID_VALUE, "Possible loop detected in button chain");
                 return;
             }
+            current = current->next;
+            it_counter++;
         }
 
         current->next = buttons;

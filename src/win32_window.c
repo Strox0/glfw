@@ -1329,7 +1329,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                 for (int i = 0; i < 3; i++)
                 {
                     GLFWChainSpec* chain = window->customTitlebarProps.groups[i].buttons;
-                    GLFWChainSpec* loop_detect = chain;
+                    int it_counter = 0;
                     if (!chain)
                         continue;
 
@@ -1347,18 +1347,20 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                     {
                         int width_sum = 0;
                         GLFWChainSpec* chain_c = chain;
-                        while (chain_c && loop_detect->next)
+                        while (chain_c)
                         {
-                            width_sum += chain_c->width;
-                            chain_c = chain_c->next;
-                            loop_detect = loop_detect->next->next;
-                            if (chain_c == loop_detect)
+                            if (it_counter == 50)
                             {
-                                width_sum += chain_c->width;
+                                _glfwInputError(GLFW_INVALID_VALUE, "Possible infinite loop detected in custom titlebar button chain");
+                                width_sum *= 0.06;
                                 break;
                             }
+
+                            width_sum += chain_c->width;
+                            chain_c = chain_c->next;
+                            it_counter++;
                         }
-                        loop_detect = chain;
+                        it_counter = 0;
                         start_pos = (window->win32.width - width_sum) / 2;
                         break;
                     }
@@ -1368,8 +1370,14 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                         return HTCAPTION;
                     }
 
-                    while (chain && loop_detect->next)
+                    while (chain)
                     {
+                        if (it_counter == 50)
+                        {
+                            _glfwInputError(GLFW_INVALID_VALUE, "Possible infinite loop detected in custom titlebar button chain");
+                            break;
+                        }
+
                         RECT rect = { 0 };
                         rect.top = chain->topOffset;
                         rect.bottom = chain->topOffset + chain->height;
@@ -1402,43 +1410,20 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                             start_pos -= chain->width;
 
                         chain = chain->next;
-                        loop_detect = loop_detect->next->next;
-                        if (chain == loop_detect)
-                        {
-                            RECT rect = { 0 };
-                            rect.top = chain->topOffset;
-                            rect.bottom = chain->topOffset + chain->height;
-                            rect.left = start_pos;
-                            rect.right = start_pos + chain->width;
-
-                            if (PtInRect(&rect, cursor_p))
-                            {
-                                mtx_unlock(&window->mutex);
-                                switch (chain->buttonType)
-                                {
-                                case GLFW_CT_CLOSE_BUTTON:
-                                    return HTCLOSE;
-                                    break;
-                                case GLFW_CT_MINIMIZE_BUTTON:
-                                    return HTMINBUTTON;
-                                    break;
-                                case GLFW_CT_MAXIMIZE_BUTTON:
-                                    return HTMAXBUTTON;
-                                    break;
-                                default:
-                                    _glfwInputError(GLFW_INVALID_ENUM, "Invalid button type");
-                                    return HTCAPTION;
-                                }
-                            }
-                            break;
-                        }
+                        it_counter++;
                     }
                 }
 
                 GLFWChainSpec* chain = window->customTitlebarProps.exclusions;
-                GLFWChainSpec* loop_detect = chain;
-                while (chain && loop_detect->next)
+                int it_counter = 0;
+                while (chain)
                 {
+                    if (it_counter == 50)
+                    {
+                        _glfwInputError(GLFW_INVALID_VALUE, "Possible infinite loop detected in custom titlebar exclusion chain");
+                        break;
+                    }
+
                     RECT rect = {0};
                     rect.top = chain->topOffset;
                     rect.bottom = chain->topOffset + chain->height;
@@ -1451,22 +1436,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                         return HTCLIENT;
                     }
                     chain = chain->next;
-                    loop_detect = loop_detect->next->next;
-                    if (chain == loop_detect)
-                    {
-                        RECT rect = { 0 };
-                        rect.top = chain->topOffset;
-                        rect.bottom = chain->topOffset + chain->height;
-                        rect.left = chain->startOffset * window->win32.width;
-                        rect.right = rect.left + chain->width;
-
-                        if (PtInRect(&rect, cursor_p))
-                        {
-                            mtx_unlock(&window->mutex);
-                            return HTCLIENT;
-                        }
-                        break;
-                    }
+                    it_counter++;
                 }
 
                 mtx_unlock(&window->mutex);
