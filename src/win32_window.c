@@ -1360,7 +1360,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                             chain_c = chain_c->next;
                             it_counter++;
                         }
-                        width_sum += it_counter * window->customTitlebarProps.groups[i].spacing;
+                        width_sum += (it_counter - 1) * window->customTitlebarProps.groups[i].spacing;
                         it_counter = 0;
                         start_pos = (window->win32.width - width_sum) / 2;
                         break;
@@ -1408,7 +1408,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
                         if (window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_LEFT || window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_CENTER)
                             start_pos += chain->width + window->customTitlebarProps.groups[i].spacing;
                         else if (window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_RIGHT)
-                            start_pos -= chain->width - window->customTitlebarProps.groups[i].spacing;
+                            start_pos -= chain->width + window->customTitlebarProps.groups[i].spacing;
 
                         chain = chain->next;
                         it_counter++;
