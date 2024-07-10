@@ -596,6 +596,7 @@ GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* e
     _GLFW_REQUIRE_INIT();
 
     _GLFWwindow* win = (_GLFWwindow*)window;
+    mtx_lock(&win->mutex);
 
     if (win->customTitlebarProps.exclusions == NULL)
     {
@@ -616,8 +617,10 @@ GLFWAPI void glfwCustomTitlebarAddExclusion(GLFWwindow* window, GLFWChainSpec* e
             it_counter++;
         }
 
-        current->next = exclusions;
+        current = exclusions;
     }
+
+    mtx_unlock(&win->mutex);
 }
 
 GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short group_id, GLFWChainSpec* buttons)
@@ -628,6 +631,7 @@ GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short gro
     _GLFW_REQUIRE_INIT();
 
     _GLFWwindow* win = (_GLFWwindow*)window;
+    mtx_lock(&win->mutex);
 
     if (win->customTitlebarProps.groups[group_id].buttons == NULL)
     {
@@ -648,8 +652,10 @@ GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short gro
             it_counter++;
         }
 
-        current->next = buttons;
+        current = buttons;
     }
+
+    mtx_unlock(&win->mutex);
 }
 
 GLFWAPI void glfwCustomTitlebarSetGroupAlignment(GLFWwindow* window, unsigned short group_id, unsigned short alignment)
@@ -664,7 +670,11 @@ GLFWAPI void glfwCustomTitlebarSetGroupAlignment(GLFWwindow* window, unsigned sh
 
     _GLFWwindow* win = (_GLFWwindow*)window;
 
+    mtx_lock(&win->mutex);
+
     win->customTitlebarProps.groups[group_id].alignment = alignment;
+
+    mtx_unlock(&win->mutex);
 }
 
 void glfwCustomTitlebarSetGroupOffset(GLFWwindow* window, unsigned short group_id, float offset)
@@ -679,7 +689,29 @@ void glfwCustomTitlebarSetGroupOffset(GLFWwindow* window, unsigned short group_i
 
     _GLFWwindow* win = (_GLFWwindow*)window;
 
+    mtx_lock(&win->mutex);
+
     win->customTitlebarProps.groups[group_id].edgeOffset = offset;
+
+    mtx_unlock(&win->mutex);
+}
+
+GLFWAPI void glfwCustomTitlebarSetGroupSpacing(GLFWwindow* window, unsigned short group_id, int spacing)
+{
+    assert(window != NULL);
+    assert(group_id >= 0);
+    assert(group_id < 3);
+    assert(spacing >= 0);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+
+    mtx_lock(&win->mutex);
+
+    win->customTitlebarProps.groups[group_id].spacing = spacing;
+
+    mtx_unlock(&win->mutex);
 }
 
 void glfCustomTitlebarRemoveExclusions(GLFWwindow* window)
@@ -690,6 +722,8 @@ void glfCustomTitlebarRemoveExclusions(GLFWwindow* window)
 
     _GLFWwindow* win = (_GLFWwindow*)window;
 
+    mtx_lock(&win->mutex);
+
     GLFWChainSpec* current = win->customTitlebarProps.exclusions;
     while (current)
     {
@@ -699,6 +733,33 @@ void glfCustomTitlebarRemoveExclusions(GLFWwindow* window)
     }
 
     win->customTitlebarProps.exclusions = NULL;
+
+    mtx_unlock(&win->mutex);
+}
+
+GLFWAPI void glfwCustomTitlebarRemoveButtons(GLFWwindow* window, unsigned short group_id)
+{
+    assert(window != NULL);
+    assert(group_id >= 0);
+    assert(group_id < 3);
+
+    _GLFW_REQUIRE_INIT();
+
+    _GLFWwindow* win = (_GLFWwindow*)window;
+
+    mtx_lock(&win->mutex);
+
+    GLFWChainSpec* current = win->customTitlebarProps.groups[group_id].buttons;
+    while (current)
+    {
+        GLFWChainSpec* next = current->next;
+        _glfw_free(current);
+        current = next;
+    }
+
+    win->customTitlebarProps.groups[group_id].buttons = NULL;
+
+    mtx_unlock(&win->mutex);
 }
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window)
