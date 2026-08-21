@@ -1407,8 +1407,8 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM l
 
                         if (window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_LEFT || window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_CENTER)
                             start_pos += chain->width + window->customTitlebarProps.groups[i].spacing;
-                        else if (window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_RIGHT)
-                            start_pos -= chain->width + window->customTitlebarProps.groups[i].spacing;
+                        else if (window->customTitlebarProps.groups[i].alignment == GLFW_CT_ALIGN_RIGHT && chain->next != NULL)
+                            start_pos -= chain->next->width + window->customTitlebarProps.groups[i].spacing;
 
                         chain = chain->next;
                         it_counter++;

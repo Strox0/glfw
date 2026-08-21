@@ -508,7 +508,7 @@ GLFWAPI void glfwDestroyWindow(GLFWwindow* handle)
     }
 
     if (window->customTitlebarProps.exclusions)
-        glfCustomTitlebarRemoveExclusions(window);
+        glfwCustomTitlebarRemoveExclusions(window);
 
     for (int i = 0; i < 3; i++)
     {
@@ -714,7 +714,7 @@ GLFWAPI void glfwCustomTitlebarSetGroupSpacing(GLFWwindow* window, unsigned shor
     mtx_unlock(&win->mutex);
 }
 
-void glfCustomTitlebarRemoveExclusions(GLFWwindow* window)
+void glfwCustomTitlebarRemoveExclusions(GLFWwindow* window)
 {
     assert(window != NULL);
 

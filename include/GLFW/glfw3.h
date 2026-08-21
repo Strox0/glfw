@@ -3060,7 +3060,7 @@ GLFWAPI void glfwCustomTitlebarAddButtons(GLFWwindow* window, unsigned short gro
 GLFWAPI void glfwCustomTitlebarSetGroupAlignment(GLFWwindow* window, unsigned short group_id, unsigned short alignment);
 GLFWAPI void glfwCustomTitlebarSetGroupOffset(GLFWwindow* window, unsigned short group_id, float edgeOffset);
 GLFWAPI void glfwCustomTitlebarSetGroupSpacing(GLFWwindow* window, unsigned short group_id, int spacing);
-GLFWAPI void glfCustomTitlebarRemoveExclusions(GLFWwindow* window);
+GLFWAPI void glfwCustomTitlebarRemoveExclusions(GLFWwindow* window);
 GLFWAPI void glfwCustomTitlebarRemoveButtons(GLFWwindow* window, unsigned short group_id);
 
 GLFWAPI const GLFWcustomtitlebar* glfwGetCustomTitlebarProperties(GLFWwindow* window);
